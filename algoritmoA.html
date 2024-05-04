@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Ruta mas precisa A*</title>
+        <style>
+            /* Estilos CSS para el contenedor y la cuadrícula */
+            /*AJUSTA LA POSICION EN LA CUAL QUIERO QUE SE MUESTRE LA CUADRICULA*/
+            .container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+            }
+            /*Creo una clase grid*/
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(10, 30px);
+            }
+            .cell {
+                /**/
+                width: 30px;
+                height: 30px;
+                border: 1px solid #ccc;
+                box-sizing: border-box;
+                background-color: white;
+            }
+            .muro {
+                background-color: rgb(71, 48, 4);
+            }
+            .puntoAvance {
+                background-color: yellow;
+            }
+        </style>
+    </head>
+<body>
+
+    <div class="container">
+<!-- Div para la cuadrícula -->
+<div class="grid" id="grid"></div>
+    </div>
+    
+    <script>
+        
+        function Node(x, y, parent = null) {
+            this.x = x;
+            this.y = y;
+            this.parent = parent; 
+            this.g = 0; 
+            this.h = 0; 
+            this.f = 0; 
+        }
+
+        
+        function euclideanDistance(x1, y1, x2, y2) {
+            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        }
+
+        // Función para encontrar la ruta usando A*
+        function findPath(grid, startX, startY, endX, endY) {
+            let width = grid.length;
+            let height = grid[0].length;
+
+            let startNode = new Node(startX, startY);
+            let endNode = new Node(endX, endY);
+
+            let openList = []; // Lista de nodos abiertos
+            let closedList = []; // Lista de nodos cerrados
+
+            openList.push(startNode); // Agregar el nodo de inicio a la lista abierta
+
+            while (openList.length > 0) {
+                let currentNode = openList[0];
+                for (let i = 1; i < openList.length; i++) {
+                    if (openList[i].f < currentNode.f) {
+                        currentNode = openList[i];
+                    }
+                }
+
+                // Mover el nodo actual de la lista abierta a la lista cerrada
+                openList = openList.filter(node => node !== currentNode);
+                closedList.push(currentNode);
+
+                // Si el nodo actual es el nodo objetivo, reconstruir y devolver la ruta
+                if (currentNode.x === endNode.x && currentNode.y === endNode.y) {
+                    let puntoAvance = [];
+                    let current = currentNode;
+                    while (current !== null) {
+                        puntoAvance.push(current);
+                        current = current.parent;
+                    }
+                    puntoAvance.reverse();
+                    return puntoAvance;
+                }
+
+                // Generar sucesores del nodo actual
+                let successors = [];
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        if ((i === 0 && j === 0) ||
+                            currentNode.x + i < 0 || currentNode.x + i >= width ||
+                            currentNode.y + j < 0 || currentNode.y + j >= height) {
+                            continue;
+                        }
+
+                        if (grid[currentNode.x + i][currentNode.y + j] === 1) {
+                            continue;
+                        }
+
+                        let successor = new Node(currentNode.x + i, currentNode.y + j, currentNode);
+                        successors.push(successor);
+                    }
+                }
+
+                successors.forEach(successor => {
+                    if (closedList.some(node => node.x === successor.x && node.y === successor.y)) {
+                        return;
+                    }
+
+                    let tentativeG = currentNode.g + euclideanDistance(currentNode.x, currentNode.y, successor.x, successor.y);
+
+                    let existingNode = openList.find(node => node.x === successor.x && node.y === successor.y);
+                    if (existingNode && tentativeG < existingNode.g) {
+                        existingNode.g = tentativeG;
+                        existingNode.parent = currentNode;
+                    } else if (!existingNode) {
+                        successor.g = tentativeG;
+                        successor.h = euclideanDistance(successor.x, successor.y, endNode.x, endNode.y);
+                        successor.f = successor.g + successor.h;
+                        openList.push(successor);
+                    }
+                });
+            }
+
+            return [];
+        }
+
+        // Función para dibujar la cuadrícula con la ruta
+        function printGridWithRoute(grid, puntoAvance) {
+            let gridElement = document.getElementById('grid');
+            for (let y = 0; y < grid[0].length; y++) {
+                for (let x = 0; x < grid.length; x++) {
+                    let cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    if (puntoAvance.some(node => node.x === x && node.y === y)) {
+                        cell.classList.add('puntoAvance');
+                    } else if (grid[x][y] === 1) {
+                        cell.classList.add('muro');
+                    } else {
+                        cell.classList.add('empty');
+                    }
+                    gridElement.appendChild(cell);
+                }
+            }
+        }
+
+        // Definición de la cuadrícula para el nuevo ejemplo
+        let grid = [
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ];
+
+        let puntoAvance = findPath(grid, 0, 7, 9, 3);
+
+        // Dibujar la cuadrícula con la ruta
+        printGridWithRoute(grid, puntoAvance);
+    </script>
+</body>
+</html>
